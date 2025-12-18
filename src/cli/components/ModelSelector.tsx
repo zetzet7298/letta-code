@@ -95,7 +95,26 @@ export function ModelSelector({
     // Error fallback: show all models with warning
     if (availableModels === null) return typedModels;
     // Loaded: filter to only show models the user has access to
-    return typedModels.filter((model) => availableModels.has(model.handle));
+    const knownModels = typedModels.filter((model) => availableModels.has(model.handle));
+    const knownHandles = new Set(knownModels.map((m) => m.handle));
+
+    // Add dynamic models that are available but not in known models list
+    const dynamicModels: UiModel[] = [];
+    availableModels.forEach((handle) => {
+      if (!knownHandles.has(handle)) {
+        const parts = handle.split("/");
+        const name = parts.length > 1 ? parts[1] : handle;
+        dynamicModels.push({
+          id: handle,
+          handle: handle,
+          label: name,
+          description: `Dynamic model from ${parts[0] || "provider"}`,
+          updateArgs: {},
+        });
+      }
+    });
+
+    return [...knownModels, ...dynamicModels];
   }, [typedModels, availableModels]);
 
   const featuredModels = useMemo(
