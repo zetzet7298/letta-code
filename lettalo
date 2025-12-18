@@ -1,0 +1,9 @@
+#!/bin/bash
+export LETTA_BASE_URL="http://localhost:8283"
+# Use absolute path to project root to ensure this works from any location globally
+PROJECT_ROOT="/var/www/letta-code"
+export LETTA_PROJECT_ROOT="$PROJECT_ROOT"
+
+# Run bun directly on source code
+# --loader flags ensure bun can import markdown/text files raw if needed
+exec bun --loader:.md=text --loader:.mdx=text --loader:.txt=text run "$PROJECT_ROOT/src/index.ts" "$@"

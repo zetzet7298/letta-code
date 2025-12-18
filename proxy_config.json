@@ -1,0 +1,99 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "provider": {
+        "proxypal": {
+            "models": {
+                "gemini-2.5-computer-use-preview-10-2025": {
+                    "limit": {
+                        "context": 1048576,
+                        "output": 65536
+                    },
+                    "name": "Gemini 2.5 Computer Use Preview 10 2025"
+                },
+                "gemini-2.5-flash": {
+                    "limit": {
+                        "context": 1048576,
+                        "output": 65536
+                    },
+                    "name": "Gemini 2.5 Flash"
+                },
+                "gemini-2.5-flash-lite": {
+                    "limit": {
+                        "context": 1048576,
+                        "output": 65536
+                    },
+                    "name": "Gemini 2.5 Flash Lite"
+                },
+                "gemini-3-flash-preview": {
+                    "limit": {
+                        "context": 1048576,
+                        "output": 65536
+                    },
+                    "name": "Gemini 3 Flash Preview"
+                },
+                "gemini-3-pro-image-preview": {
+                    "limit": {
+                        "context": 1048576,
+                        "output": 65536
+                    },
+                    "name": "Gemini 3 Pro Image Preview"
+                },
+                "gemini-3-pro-preview": {
+                    "limit": {
+                        "context": 1048576,
+                        "output": 65536
+                    },
+                    "name": "Gemini 3 Pro Preview"
+                },
+                "gemini-claude-opus-4-5-thinking": {
+                    "limit": {
+                        "context": 200000,
+                        "output": 64000
+                    },
+                    "name": "Gemini Claude Opus 4.5 Thinking",
+                    "options": {
+                        "thinking": {
+                            "budgetTokens": 32768,
+                            "type": "enabled"
+                        }
+                    },
+                    "reasoning": true
+                },
+                "gemini-claude-sonnet-4-5": {
+                    "limit": {
+                        "context": 200000,
+                        "output": 64000
+                    },
+                    "name": "Gemini Claude Sonnet 4.5"
+                },
+                "gemini-claude-sonnet-4-5-thinking": {
+                    "limit": {
+                        "context": 200000,
+                        "output": 64000
+                    },
+                    "name": "Gemini Claude Sonnet 4.5 Thinking",
+                    "options": {
+                        "thinking": {
+                            "budgetTokens": 32768,
+                            "type": "enabled"
+                        }
+                    },
+                    "reasoning": true
+                },
+                "gpt-oss-120b-medium": {
+                    "limit": {
+                        "context": 128000,
+                        "output": 16384
+                    },
+                    "name": "Gpt Oss 120b Medium"
+                }
+            },
+            "name": "ProxyPal",
+            "npm": "@ai-sdk/anthropic",
+            "options": {
+                "apiKey": "proxypal-local",
+                "baseURL": "http://127.0.0.1:8317/v1"
+            }
+        }
+    }
+}

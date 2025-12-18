@@ -9,15 +9,9 @@ import {
 import { models } from "../../agent/model";
 import { colors } from "./colors";
 
-type UiModel = {
-  id: string;
-  handle: string;
-  label: string;
-  description: string;
-  isDefault?: boolean;
-  isFeatured?: boolean;
-  updateArgs?: Record<string, unknown>;
-};
+import { getDynamicModels, type UiModel } from "../../agent/customModels";
+
+// type UiModel moved to src/agent/customModels.ts
 
 interface ModelSelectorProps {
   currentModel?: string;
@@ -33,8 +27,8 @@ export function ModelSelector({
   onCancel,
 }: ModelSelectorProps) {
   const typedModels = models as UiModel[];
-  const [showAll, setShowAll] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [startIndex, setStartIndex] = useState(0);
   // undefined: not loaded yet (show spinner)
   // Set<string>: loaded and filtered
   // null: error fallback (show all models + warning)
@@ -98,53 +92,38 @@ export function ModelSelector({
     const knownModels = typedModels.filter((model) => availableModels.has(model.handle));
     const knownHandles = new Set(knownModels.map((m) => m.handle));
 
-    // Add dynamic models that are available but not in known models list
-    const dynamicModels: UiModel[] = [];
-    availableModels.forEach((handle) => {
-      if (!knownHandles.has(handle)) {
-        const parts = handle.split("/");
-        const name = parts.length > 1 ? parts[1] : handle;
-        dynamicModels.push({
-          id: handle,
-          handle: handle,
-          label: name,
-          description: `Dynamic model from ${parts[0] || "provider"}`,
-          updateArgs: {},
-        });
-      }
-    });
+    // Get dynamic models using isolated logic
+    const dynamicModels = getDynamicModels(availableModels, knownHandles);
 
+    // Dynamic models from config should likely come FIRST if configured, or user preference.
+    // For now, appending dynamic models after standard ones, OR we can sort everything.
+    // But usually standard models (models.json) are "featured".
     return [...knownModels, ...dynamicModels];
   }, [typedModels, availableModels]);
 
-  const featuredModels = useMemo(
-    () => filteredModels.filter((model) => model.isFeatured),
-    [filteredModels],
-  );
-
-  const visibleModels = useMemo(() => {
-    if (showAll) return filteredModels;
-    if (featuredModels.length > 0) return featuredModels;
-    return filteredModels.slice(0, 5);
-  }, [featuredModels, showAll, filteredModels]);
+  const VISIBLE_COUNT = 10;
 
   // Set initial selection to current model on mount
   const initializedRef = useRef(false);
   useEffect(() => {
-    if (!initializedRef.current) {
-      const index = visibleModels.findIndex((m) => m.handle === currentModel);
+    if (!initializedRef.current && filteredModels.length > 0) {
+      const index = filteredModels.findIndex((m) => m.handle === currentModel);
       if (index >= 0) {
         setSelectedIndex(index);
+        // Center initial view if possible
+        if (index > VISIBLE_COUNT - 1) {
+          setStartIndex(Math.max(0, index - Math.floor(VISIBLE_COUNT / 2)));
+        }
       }
       initializedRef.current = true;
     }
-  }, [visibleModels, currentModel]);
+  }, [filteredModels, currentModel]);
 
-  const hasMoreModels =
-    !showAll && filteredModels.length > visibleModels.length;
-  const totalItems = hasMoreModels
-    ? visibleModels.length + 1
-    : visibleModels.length;
+  const visibleModels = useMemo(() => {
+    return filteredModels.slice(startIndex, startIndex + VISIBLE_COUNT);
+  }, [filteredModels, startIndex]);
+
+  const totalItems = filteredModels.length;
 
   useInput(
     (input, key) => {
@@ -161,23 +140,26 @@ export function ModelSelector({
       }
 
       // Disable other inputs while loading
-      if (isLoading || refreshing || visibleModels.length === 0) {
+      if (isLoading || refreshing || filteredModels.length === 0) {
         return;
       }
 
       if (key.upArrow) {
-        setSelectedIndex((prev) => Math.max(0, prev - 1));
+        const nextIndex = Math.max(0, selectedIndex - 1);
+        setSelectedIndex(nextIndex);
+        if (nextIndex < startIndex) {
+          setStartIndex(nextIndex);
+        }
       } else if (key.downArrow) {
-        setSelectedIndex((prev) => Math.min(totalItems - 1, prev + 1));
+        const nextIndex = Math.min(totalItems - 1, selectedIndex + 1);
+        setSelectedIndex(nextIndex);
+        if (nextIndex >= startIndex + VISIBLE_COUNT) {
+          setStartIndex(nextIndex - VISIBLE_COUNT + 1);
+        }
       } else if (key.return) {
-        if (hasMoreModels && selectedIndex === visibleModels.length) {
-          setShowAll(true);
-          setSelectedIndex(0);
-        } else {
-          const selectedModel = visibleModels[selectedIndex];
-          if (selectedModel) {
-            onSelect(selectedModel.id);
-          }
+        const selectedModel = filteredModels[selectedIndex];
+        if (selectedModel) {
+          onSelect(selectedModel.id);
         }
       }
     },
@@ -220,7 +202,7 @@ export function ModelSelector({
         </Box>
       )}
 
-      {!isLoading && visibleModels.length === 0 && (
+      {!isLoading && filteredModels.length === 0 && (
         <Box>
           <Text color="red">
             No models available. Please check your Letta configuration.
@@ -229,25 +211,21 @@ export function ModelSelector({
       )}
 
       <Box flexDirection="column">
+        {startIndex > 0 && <Text dimColor>... {startIndex} more above ...</Text>}
         {visibleModels.map((model, index) => {
-          const isSelected = index === selectedIndex;
+          // Calculate absolute index in the filtered list
+          const absoluteIndex = startIndex + index;
+          const isSelected = absoluteIndex === selectedIndex;
 
           // Check if this model is current by comparing handle and relevant settings
           let isCurrent = model.handle === currentModel;
-
-          // For models with the same handle, also check specific configuration settings
+          // Simplified check for display purposes
           if (isCurrent && model.handle?.startsWith("anthropic/")) {
-            // For Anthropic models, check enable_reasoner setting
+            // Keep old logic if needed or skip for simplicity in list view
             const modelEnableReasoner = model.updateArgs?.enable_reasoner;
-
-            // If the model explicitly sets enable_reasoner, check if it matches current settings
             if (modelEnableReasoner !== undefined) {
-              // Model has explicit enable_reasoner setting, compare with current
-              isCurrent =
-                isCurrent && modelEnableReasoner === currentEnableReasoner;
+              isCurrent = isCurrent && modelEnableReasoner === currentEnableReasoner;
             } else {
-              // If model doesn't explicitly set enable_reasoner, it defaults to enabled (or undefined)
-              // It's current if currentEnableReasoner is not explicitly false
               isCurrent = isCurrent && currentEnableReasoner !== false;
             }
           }
@@ -276,21 +254,8 @@ export function ModelSelector({
             </Box>
           );
         })}
-        {!showAll && filteredModels.length > visibleModels.length && (
-          <Box flexDirection="row" gap={1}>
-            <Text
-              color={
-                selectedIndex === visibleModels.length
-                  ? colors.selector.itemHighlighted
-                  : undefined
-              }
-            >
-              {selectedIndex === visibleModels.length ? "›" : " "}
-            </Text>
-            <Text dimColor>
-              Show all models ({filteredModels.length} available)
-            </Text>
-          </Box>
+        {filteredModels.length > startIndex + VISIBLE_COUNT && (
+          <Text dimColor>... {filteredModels.length - (startIndex + VISIBLE_COUNT)} more below ...</Text>
         )}
       </Box>
     </Box>

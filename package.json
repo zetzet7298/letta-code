@@ -4,7 +4,8 @@
   "description": "Letta Code is a CLI tool for interacting with stateful Letta agents from the terminal.",
   "type": "module",
   "bin": {
-    "letta": "letta.js"
+    "letta": "letta.js",
+    "lettalo": "lettalo"
   },
   "files": [
     "LICENSE",
