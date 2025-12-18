@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  letta:
+    image: letta/letta:latest
+    container_name: letta-server
+    # Using bridge mode (default) to avoid port conflicts (e.g. Redis 6379)
+    # network_mode: host 
+    ports:
+      - "8283:8283"
+    volumes:
+      - letta-pgdata:/var/lib/postgresql/data
+      # - ./my_tools:/app/my_tools
+    env_file:
+      - .env
+    environment:
+      # Use host.docker.internal to access host services like Ollama
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SECURE=${SECURE:-false}
+      - LETTA_SERVER_PASSWORD=${LETTA_SERVER_PASSWORD}
+      # - TOOL_EXEC_DIR=${TOOL_EXEC_DIR}
+      # - TOOL_EXEC_VENV_NAME=${TOOL_EXEC_VENV_NAME}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  letta-pgdata:
